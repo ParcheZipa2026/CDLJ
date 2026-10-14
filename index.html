@@ -376,8 +376,15 @@ function isYouth(r){
 
 function getMonth(r){
   if(!r.fecha) return null;
-  const d = new Date(r.fecha);
-  return isNaN(d.getTime()) ? null : d.getMonth()+1; // 1-12
+  // El Apps Script envía 'YYYY-MM-DD' — parseamos directamente sin new Date()
+  // para evitar cualquier conversión de zona horaria
+  const s = String(r.fecha);
+  // Formato YYYY-MM-DD
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return parseInt(m[2], 10); // mes 1-12 directo
+  // Fallback: ISO con hora → usar UTC
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.getUTCMonth() + 1;
 }
 
 function planFiltered(){

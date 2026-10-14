@@ -179,6 +179,10 @@ tr:hover td{background:#f0f4ff}
     <option value="Masculino">Masculino</option>
     <option value="No Binario">No Binario</option>
   </select>
+  <label>📍 Lugar:</label>
+  <select id="filtLugar">
+    <option value="all">Todos los lugares</option>
+  </select>
   <span id="lastUpdate"></span>
 </div>
 
@@ -311,6 +315,7 @@ const LOGO_JT = "data:image/jpeg;base64,/9j/4gv4SUNDX1BST0ZJTEUAAQEAAAvoAAAAAAIA
 let RAW = {planillas:[], emprendedores:[], atenciones:[]};
 let filteredMonth = 'all';
 let filteredGen   = 'all';
+let filteredLugar = 'all';
 const CHARTS = {};
 
 const NOMBRES_MESES = ['','Febrero','Marzo','Abril','Mayo','Junio','Julio',
@@ -342,6 +347,7 @@ async function fetchData(){
       RAW.emprendedores.length + ' emprendedores · ' +
       RAW.atenciones.length + ' atenciones';
     buildMesFilter();
+    buildLugarFilter();
     overlay.classList.add('hidden');
     renderAll();
   } catch(e){
@@ -397,6 +403,10 @@ function planFiltered(){
     if(filteredMonth !== 'all'){
       const m = getMonth(r);
       if(m !== parseInt(filteredMonth)) return false;
+    }
+    if(filteredLugar !== 'all'){
+      const l = (r.lugar||'').trim();
+      if(l !== filteredLugar) return false;
     }
     return true;
   });
@@ -480,6 +490,23 @@ function buildMesFilter(){
     const o = document.createElement('option');
     o.value = m;
     o.textContent = NOMBRES_MESES[m] || 'Mes '+m;
+    sel.appendChild(o);
+  });
+}
+
+function buildLugarFilter(){
+  const lugares = new Set();
+  RAW.planillas.forEach(function(r){
+    const l = (r.lugar||'').trim();
+    if(l) lugares.add(l);
+  });
+  const sel = document.getElementById('filtLugar');
+  // Limpiar opciones previas excepto "Todos"
+  while(sel.options.length > 1) sel.remove(1);
+  Array.from(lugares).sort().forEach(function(l){
+    const o = document.createElement('option');
+    o.value = l;
+    o.textContent = l;
     sel.appendChild(o);
   });
 }
@@ -1100,6 +1127,12 @@ document.getElementById('filtMes').addEventListener('change', function(ev){
 
 document.getElementById('filtGen').addEventListener('change', function(ev){
   filteredGen = ev.target.value;
+  const active = document.querySelector('nav button.active');
+  if(active) renderSection(active.dataset.sec);
+});
+
+document.getElementById('filtLugar').addEventListener('change', function(ev){
+  filteredLugar = ev.target.value;
   const active = document.querySelector('nav button.active');
   if(active) renderSection(active.dataset.sec);
 });

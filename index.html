@@ -226,7 +226,7 @@ tr:hover td{background:#f0f4ff}
     <div class="tbl-wrap">
       <table id="cdjTable">
         <thead><tr>
-          <th>Tema/Actividad</th><th>Jóvenes Únicos</th><th>Participaciones</th><th>Responsable</th>
+          <th>Tema/Actividad</th><th>Jóvenes Únicos</th><th>Participaciones</th><th>Responsable</th><th>Lugar</th>
         </tr></thead>
         <tbody id="cdjTbody"></tbody>
       </table>
@@ -336,8 +336,11 @@ async function fetchData(){
     RAW.planillas    = json.planillas    || [];
     RAW.emprendedores= json.emprendedores|| [];
     RAW.atenciones   = json.atenciones   || [];
+    const now = new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
     document.getElementById('lastUpdate').textContent =
-      '⟳ Actualizado: ' + new Date().toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'});
+      '⟳ ' + now + '  |  📋 ' + RAW.planillas.length + ' registros · ' +
+      RAW.emprendedores.length + ' emprendedores · ' +
+      RAW.atenciones.length + ' atenciones';
     buildMesFilter();
     overlay.classList.add('hidden');
     renderAll();
@@ -357,10 +360,16 @@ async function fetchData(){
 // ═══════════════════════════════════════════════════
 function isYouth(r){
   const e = r.rango_edad;
+  // Número directo (edad exacta del Sheet)
   if(typeof e === 'number') return e >= 14 && e <= 28;
-  if(typeof e === 'string'){
-    const eu = e.toUpperCase().replace(/-/g,' ');
-    return eu.includes('12 A 17') || eu.includes('18 A 28') || eu.includes('18 28');
+  if(typeof e === 'string' && e.trim() !== ''){
+    const eu = e.toUpperCase().trim().replace(/-/g,' ');
+    // Rangos texto: '12 a 17 Años', '18 a 28 Años', '18-28', etc.
+    if(eu.includes('12 A 17') || eu.includes('18 A 28') || eu.includes('18 28')) return true;
+    // Si es número en string
+    const n = parseFloat(e);
+    if(!isNaN(n)) return n >= 14 && n <= 28;
+    return false;
   }
   return false;
 }
@@ -389,14 +398,16 @@ function planFiltered(){
 function norm(s){ return (s||'').trim().replace(/\s+/g,' '); }
 
 function normLinea(s){
-  const v = norm(s).toLowerCase();
+  // Normaliza tildes para comparación robusta
+  const v = (s||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'');
   if(v.includes('casa')) return 'Casa de la Juventud';
-  if(v.includes('emillero')) return 'Semilleros';
+  if(v.includes('emillero') || v.includes('semillero')) return 'Semilleros';
   if(v.includes('emprendimiento')) return 'Emprendimientos';
-  if(v.includes('instancias')) return 'Instancias de Participación';
-  if(v.includes('strategi')) return 'Estrategia';
-  if(v.includes('trasversal')||v.includes('transversal')) return 'Transversales';
-  return norm(s);
+  if(v.includes('instancias') || v.includes('participac')) return 'Instancias de Participación';
+  if(v.includes('strategi') || v.includes('estrategi')) return 'Estrategia';
+  if(v.includes('trasversal') || v.includes('transversal')) return 'Transversales';
+  return (s||'').trim();
 }
 
 function normLugar(s){
@@ -746,7 +757,7 @@ function renderCDJ(){
   const temas = {};
   rows.forEach(function(r){
     const t = norm(r.tema)||'Sin tema';
-    if(!temas[t]) temas[t] = {docs:new Set(), count:0, resp:r.responsable||''};
+    if(!temas[t]) temas[t] = {docs:new Set(), count:0, resp:r.responsable||'', lugar:r.lugar||''};
     temas[t].count++;
     if(r.documento) temas[t].docs.add(String(r.documento));
   });
@@ -760,11 +771,11 @@ function renderCDJ(){
   tbody.innerHTML = '';
   // Sort by unique docs desc
   const tArr = Object.entries(temas).map(function(e){
-    return {tema:e[0],docs:e[1].docs.size,count:e[1].count,resp:e[1].resp};
+    return {tema:e[0],docs:e[1].docs.size,count:e[1].count,resp:e[1].resp,lugar:e[1].lugar};
   }).sort(function(a,b){return b.docs-a.docs;});
   tArr.forEach(function(t){
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td>'+t.tema+'</td><td style="text-align:center"><b>'+t.docs+'</b></td><td style="text-align:center">'+t.count+'</td><td>'+t.resp+'</td>';
+    tr.innerHTML = '<td>'+t.tema+'</td><td style="text-align:center"><b>'+t.docs+'</b></td><td style="text-align:center">'+t.count+'</td><td>'+t.resp+'</td><td style="font-size:.7rem;color:#888">'+t.lugar+'</td>';
     tbody.appendChild(tr);
   });
   if(psRows.length>0){
